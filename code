@@ -1,0 +1,163 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+if __name__ == '__main__':
+    # write your code here
+    """
+       1. Load the dataset from the JSON file;
+       2. Explore the data and check what the axes are, get the shape of the DataFrame, 
+       use .info() to check for the data types and whether there are any missing values;
+       3. Use the .duplicated() method to check whether there are any duplicate rows. 
+       Print False if there are no duplicate rows, otherwise print True.
+       4. Drop all the rows where the gender column does not contain any values. 
+       Hint: use the subset parameter of the .dropna() method in pandas.
+       5. Re-index the DataFrame so that the index contains consecutive numbers. 
+       Do not forget to remove the old index column.
+    """
+    df = pd.read_json("Nobel_laureates.json")
+    df.dropna(subset="gender", axis=0, inplace=True)
+    df.duplicated().any()
+    df.reset_index(inplace=True)
+
+    """
+        1. Extract the country names from the place_of_birth column. 
+        Typically, this column contains the name of the city and, sometimes, state and country of birth. 
+        The values are separated by a comma. To extract the country, split each column value by comma (if it is present)
+        and take the last value. Apply .strip() to the Python string to remove the excessive white spaces. 
+        If no comma is present in the column value, replace the value with None;
+        2. Fill the born_in empty values with the new values of the place_of_birth column. 
+        If the born_in column still contains empty values, drop the respective rows. Reset the DataFrame index;
+        3. Modify the names of countries — replace US, United States, and U.S. with USA, and United Kingdom with UK.
+    """
+    born_in = df["born_in"].tolist()
+    birth_places = df["place_of_birth"].tolist()
+    states = []
+    for place in birth_places:
+        if place is None or "," not in place:
+            states.append(None)
+        else:
+            state = place.split(",")[-1].strip()
+            states.append(state)
+    new_born_in = []
+    for i in range(len(born_in)):
+        if born_in[i] == "":
+            new_born_in.append(states[i])
+        else:
+            new_born_in.append(born_in[i])
+    df.drop(labels="born_in", axis=1, inplace=True)
+    df.insert(1, "born_in", new_born_in)
+    df.dropna(subset="born_in", axis=0, inplace=True)
+    df.reset_index(inplace=True)
+    df["born_in"].replace(to_replace=["US", "United States", "U.S."], value="USA", inplace=True)
+    df["born_in"].replace(to_replace="United Kingdom", value="UK", inplace=True)
+    final = df["born_in"].tolist()
+    """
+        1. The dates of birth are present in 4 formats: 26 April 1932, 1951-3-26, December 13, 1923, and, 1950. 
+        Generate a new column, representing the year each Nobel Laureate was born.
+        2. Create a new column, representing the age of winning the prize. 
+        It is the year of winning the prize minus the year of birth.
+    """
+    df["year_born"] = pd.DatetimeIndex(df['date_of_birth']).year
+    df["age_of_winning"] = df['year'] - df['year_born']
+    # print(df['year_born'].tolist(), df['age_of_winning'].tolist(), sep="\n")
+
+    """
+       1. Re-code the countries. If the number of the Nobel Laureates born in the country is less than 25, 
+          re-code it to the Other countries group;
+       2. Use the following colors: blue, orange, red, yellow, green, pink, brown, cyan, purple;
+       3. Set figure size to (12, 12);
+       4. For countries whose slices are exploded, set the explode parameter to 0.08.
+    """
+
+    """countries = df["born_in"].tolist()
+    cl_countries = set(countries)
+
+    c_data = {'Other countries': 0}
+    for country in cl_countries:
+        c_count = countries.count(country)
+        if c_count < 25:
+            c_data["Other countries"] += c_count
+        else:
+            c_data[country] = c_count
+
+    sc_data = dict(sorted(c_data.items(), key=lambda item: item[1], reverse=True))
+    labels = []
+    sizes = []
+
+    for x, y in sc_data.items():
+        labels.append(x)
+        sizes.append(y)
+
+    colours = ["blue", "orange", "red", "yellow", "green", "pink", "brown", "cyan", "purple"]
+    explode = [0, 0, 0, 0.08, 0.08, 0.08, 0.08, 0.08, 0.08]
+    plt.figure(figsize=(12, 12))
+    plt.pie(sizes,
+            explode=explode,
+            labels=labels,
+            colors=colours,
+            autopct=lambda p: '{:.2f}%\n({:.0f})'.format(p, p * sum(sizes) / 100))
+    plt.show()"""
+
+    """
+       1. Drop all the rows where the category column does not contain any values.
+       2. Set figure size to (10, 10);
+       3. The bar centers are moved by 0.2 from the tick center, the width of bars is 0.4;
+       4. The bars corresponding to males and females are of "blue" and "crimson" colours respectively;
+       5. The axis font size is 14, the plot font size is 20
+    """
+    df['category'].replace('', np.nan, inplace=True)
+    df.dropna(subset="category", axis=0, inplace=True)
+    
+    bar_info = df.groupby('category', as_index=False).gender.value_counts()
+
+    category = bar_info["category"].drop_duplicates().tolist()
+    male = bar_info.loc[bar_info.gender == "male", "count"].tolist()
+    female = bar_info.loc[bar_info.gender == "female", "count"].tolist()
+
+    x_axis = np.arange(len(category))
+
+    plt.figure(figsize=(10, 10))
+
+    plt.bar(x_axis - 0.2, male, width=0.4, label='Males', color="blue")
+    plt.bar(x_axis + 0.2, female, width=0.4, label='Females', color="crimson")
+
+    plt.xticks(x_axis, category)
+
+    plt.xlabel('Category', fontsize=14)
+    plt.ylabel('Noble Laureates count', fontsize=14)
+    plt.title('The total count of male and female Nobel Prize winners by categories', fontsize=20)
+
+    # add legend
+    plt.legend()
+
+    plt.show()
+
+    """
+       Generate a box plot for ages of getting the Nobel Prize for each category:
+       1. Set figure size to (10, 10);
+       2. Set the font size of the axis labels to 14 and the font size of the plot label is 20;
+       3. Display the mean age of obtaining the Nobel Prize in each category (green triangle in the image below).
+    """
+
+    categories = df["category"].drop_duplicates().tolist()
+    categories.sort()
+
+    data = dict()
+    for category in categories:
+        cat_df = df.loc[df.category == category, "age_of_winning"]
+        data[category] = cat_df.tolist()
+    data["All categories"] = df["age_of_winning"].tolist()
+
+    labels, box_data = data.keys(), data.values()
+    labels = list(labels)
+    print(labels)
+    plt.figure(figsize=(10, 10))
+
+    plt.boxplot(box_data, labels=labels, showmeans=True)
+
+    plt.ylabel('Age of Obtaining the Nobel Prize', fontsize=14)
+    plt.xlabel(None, fontsize=14)
+    plt.title('Distribution of Ages by Category', fontsize=20)
+    plt.show()
